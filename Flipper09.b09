@@ -1,0 +1,337 @@
+PROCEDURE Flipper09
+(* Copyright 1989 Falsoft, Inc.
+DIM sum4,sum2,sum1,sum3,col1,col2,total:INTEGER
+DIM move,line,ll,player,xx,yy,cnter,errnum:INTEGER
+DIM x0,y0,dx,dy,x1,y1,x2,y2,x3,y3,tb:INTEGER
+DIM scor(3),xa(20),ya(20),aa(10,10):BYTE
+DIM va(10,10):INTEGER
+DIM name(3):STRING
+DIM edge,str,nm(3):STRING[1]
+DIM board,left:STRING[2]
+DIM note:STRING[37]
+DIM bottom:STRING[17]
+DIM nout,blank:STRING[6]
+DIM nogo,good,point:BOOLEAN
+5 line=5
+PRINT CHR$(12)
+PRINT TAB(12); "OTHELL09"
+PRINT TAB(9); "COPYRIGHT 1985"
+PRINT TAB(7); "BY STEPHEN J. PAGE"
+PRINT TAB(9); "OTTAWA, CANADA"
+PRINT 
+left=CHR$(2)+CHR$(32)
+note=left+CHR$(45)+"                               "+left+CHR$(45
+)
+blank="   "+CHR$(8)+CHR$(8)+CHR$(8)
+ON ERROR GOTO 60
+nogo=FALSE
+BASE 0
+INPUT "FIRST PLAYERS NAME: ",name(1)
+INPUT "SECOND PLAYERS NAME: ",name(2)
+IF name(1)="" THEN name(1)="COCO"
+ENDIF 
+IF name(2)="" THEN name(2)="coco"
+ENDIF 
+PRINT "COLOR DISPLAY? (Y/N) "; 
+GET #0,str
+PRINT 
+IF str="Y" OR str="y" THEN 
+FOR x0=1 TO 4
+PRINT "  "; x0; ":"; 
+str=CHR$(127+16*x0)
+PUT #0,str
+NEXT x0
+PRINT 
+10 line=10
+REPEAT 
+PRINT left+CHR$(43)+"FIRST COLOR:"; 
+GET #3,str
+col1=VAL(str)
+UNTIL col1<5 AND col1>0
+20 line=20
+REPEAT 
+PRINT left+CHR$(44)+"SECOND COLOR:"; 
+GET #0,str
+col2=VAL(str)
+UNTIL col2<5 AND col2>0 AND col1<>col2
+PRINT 
+edge=CHR$(128)
+bottom=""
+FOR x0=1 TO 17
+bottom=bottom+CHR$(195)
+NEXT x0
+nm(0)=CHR$(195)
+nm(1)=CHR$(115+16*col1)
+nm(2)=CHR$(115+16*col2)
+ELSE 
+edge=" "
+nm(0)="+"
+nm(1)=name(1)
+nm(2)=name(2)
+ENDIF 
+REPEAT 
+REM INITIALIZE ARRAY
+FOR x0=0 TO 9
+FOR y0=0 TO 9
+aa(x0,y0)=0
+NEXT y0
+NEXT x0
+aa(4,4)=1
+aa(5,5)=1
+aa(4,5)=2
+aa(5,4)=2
+FOR x0=1 TO 4
+FOR y0=1 TO 4
+READ nn
+va(x0,y0)=nn
+va(x0,9-y0)=nn
+va(9-x0,y0)=nn
+va(9-x0,9-y0)=nn
+NEXT y0
+NEXT x0
+DATA 2000,-100,50,40
+DATA -100,-250,-21,-15
+DATA 50,-21,5,2
+DATA 40,-15,2,1
+REM PRINT OUT BOARD
+tb=8
+PRINT CHR$(12); TAB(tb); "   1 2 3 4 5 6 7 8"
+FOR x0=1 TO 8
+PRINT TAB(tb); x0; 
+str=edge
+PUT #0,str
+FOR y0=1 TO 8
+board=nm(aa(x0,y0))+edge
+PUT #0,board
+NEXT y0
+PRINT x0
+NEXT x0
+IF line=20 THEN PRINT TAB(tb+1); 
+PUT #0,bottom
+PRINT 
+ENDIF 
+PRINT TAB(tb); "  1 2 3 4 5 6 7 8"
+PRINT left; CHR$(47); "ENTER 0,0 IF UNABLE TO MOVE"; 
+FOR x0=1 TO LEN(name(1))
+nout=CHR$(2)+CHR$(34)+CHR$(x0+31)+nm(1)+MID$(name(1),x0,1)+nm(1)
+
+PUT #0,nout
+NEXT x0
+FOR x0=1 TO LEN(name(2))
+nout=CHR$(2)+CHR$(60)+CHR$(x0+31)+nm(2)+MID$(name(2),x0,1)+nm(2)
+
+PUT #0,nout
+NEXT x0
+player=1
+move=4
+WHILE move<64 DO 
+line=30
+30 REM prompt for move
+PRINT left; CHR$(42+player); name(player); "'S MOVE (X,Y):"; blank
+; 
+IF name(player)="COCO" OR name(player)="coco" THEN 
+GOSUB 70
+ELSE 
+GET #0,str
+xx=VAL(str)
+PRINT ","; 
+GET #0,str
+yy=VAL(str)
+ENDIF 
+IF xx=0 AND yy=0 THEN 
+IF nogo THEN 40
+PRINT note; name(player); " CAN'T GO"
+nogo=TRUE
+player=3-player
+GOTO 30
+ENDIF 
+IF aa(xx,yy)=0 THEN point=FALSE
+ELSE PRINT note; "POSITION TAKEN"
+GOTO 30
+ENDIF 
+FOR dx=-1 TO 1
+FOR dy=-1 TO 1
+IF aa(xx+dx,yy+dy)=3-player THEN 
+x1=xx+dx
+y1=yy+dy
+ll=0
+REPEAT 
+x1=x1+dx
+y1=y1+dy
+ll=ll+1
+UNTIL aa(x1,y1)<>3-player
+IF aa(x1,y1)=player THEN point=TRUE
+REPEAT 
+x1=x1-dx
+y1=y1-dy
+ll=ll-1
+GOSUB 50
+UNTIL ll=0
+ENDIF 
+ENDIF 
+NEXT dy
+NEXT dx
+IF NOT(point) THEN PRINT note; "MOVE GETS NO POINTS!"
+GOTO 30
+ELSE 
+x1=xx
+y1=yy
+GOSUB 50
+PRINT note; " "
+nogo=FALSE
+move=move+1
+player=3-player
+IF move=60 THEN 
+FOR x0=1 TO 8
+FOR y0=1 TO 8
+va(x0,y0)=10
+NEXT y0
+NEXT x0
+ENDIF 
+IF x1=1 OR x1=8 THEN 
+IF y1=1 OR y1=8 THEN 
+va(x1,y1-1)=500
+va(x1,y1+1)=500
+ELSE 
+va(x1,y1-1)=va(x1,y1-1)+100
+va(x1,y1+1)=va(x1,y1+1)+200
+ENDIF 
+ENDIF 
+IF y1=1 OR y1=8 THEN 
+IF x1=1 OR x1=8 THEN 
+va(x1-1,y1)=500
+va(x1+1,y1)=500
+ELSE 
+va(x1-1,y1)=va(x1-1,y1)+200
+va(x1+1,y1)=va(x1+1,y1)+100
+ENDIF 
+ENDIF 
+ENDIF 
+ENDWHILE 
+40 REM CALCULATE SCORE
+scor(1)=0
+scor(2)=0
+FOR x0=1 TO 8
+FOR y0=1 TO 8
+scor(aa(x0,y0))=scor(aa(x0,y0))+1
+NEXT y0
+NEXT x0
+PRINT note; name(1); " WON "; scor(1); ", "; name(2); " WON "; scor
+(2)
+PRINT "DO YOU WANT ANOTHER GAME? "; 
+GET #0,str
+PRINT 
+UNTIL str="n" OR str="N"
+END 
+50 REM TURN ON BOARD POSITION X1,Y1
+PRINT CHR$(2); CHR$(x1*2+tb+31); CHR$(y1+32); 
+str=nm(player)
+PUT #0,str
+aa(x1,y1)=player
+RETURN 
+60 REM ERROR ROUTINE
+errnum=ERR
+IF errnum=2 OR errnum=3 OR errnum=211 THEN 
+IF errnum=2 OR errnum=3 THEN GET #0,str
+ENDIF 
+PRINT note; "DO YOU REALLY WANT TO QUIT?"; 
+GET #0,str
+IF str="y" OR str="Y" THEN 40
+PRINT note; "WELL DON'T PUSH THAT KEY THEN"
+GOTO 65
+ENDIF 
+IF errnum=55 THEN PRINT note; "X OR Y IS OUT OF RANGE"
+GOTO 30
+ENDIF 
+IF errnum=67 THEN PRINT note; "INPUT NUMBERS ONLY!"
+GOTO 65
+ENDIF 
+PRINT note; "ERROR NUMBER "; errnum
+65 REM RETURN FROM ERROR
+IF line=5 THEN 5
+IF line=10 THEN 10
+IF line=20 THEN 20
+GOTO 30
+70 REM COMPUTER MOVES
+total=-10000
+xx=0
+yy=0
+FOR x1=1 TO 8
+FOR y1=1 TO 8
+IF aa(x1,y1)=0 THEN cnter=0
+sum1=va(x1,y1)
+FOR dx=-1 TO 1
+FOR dy=-1 TO 1
+IF aa(x1+dx,y1+dy)=3-player THEN 
+x2=x1+dx
+y2=y1+dy
+ll=0
+REPEAT 
+x2=x2+dx
+y2=y2+dy
+ll=ll+1
+UNTIL aa(x2,y2)<>3-player
+IF aa(x2,y2)=player THEN 
+REPEAT 
+x2=x2-dx
+y2=y2-dy
+sum1=sum1+va(x2,y2)*2
+cnter=cnter+1
+xa(cnter)=x2
+ya(cnter)=y2
+ll=ll-1
+aa(x2,y2)=player
+UNTIL ll=0
+ENDIF 
+ENDIF 
+NEXT dy
+NEXT dx
+IF cnter>0 THEN 
+aa(x1,y1)=player
+sum2=-10000
+FOR x2=1 TO 8
+FOR y2=1 TO 8
+IF aa(x2,y2)=0 THEN sum4=va(x2,y2)
+good=FALSE
+FOR dx=-1 TO 1
+FOR dy=-1 TO 1
+IF aa(x2+dx,y2+dy)=player THEN 
+x3=x2+dx
+y3=y2+dy
+sum3=0
+REPEAT 
+sum3=sum3+2*va(x3,y3)
+x3=x3+dx
+y3=y3+dy
+UNTIL aa(x3,y3)<>player
+IF aa(x3,y3)=3-player THEN 
+sum4=sum4+sum3
+good=TRUE
+ENDIF 
+ENDIF 
+NEXT dy
+NEXT dx
+IF good THEN 
+IF sum4>sum2 THEN sum2=sum4
+ENDIF 
+ENDIF 
+ENDIF 
+NEXT y2
+NEXT x2
+REM COMPARE SCORE TO TOTAL
+IF sum1-sum2>total THEN 
+total=sum1-sum2
+xx=x1
+yy=y1
+ENDIF 
+WHILE cnter>0 DO 
+aa(xa(cnter),ya(cnter))=3-player
+cnter=cnter-1
+ENDWHILE 
+aa(x1,y1)=0
+ENDIF 
+ENDIF 
+NEXT y1
+NEXT x1
+PRINT xx; ","; yy
+RETURN 

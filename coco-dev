@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+#
+# Run a command inside the coco-dev toolchain image (cmoc, lwtools, ToolShed,
+# the PNG converters).
+#
+#     ./coco-dev              # interactive shell
+#     ./coco-dev make ...     # run a build
+#
+# Unlike the vendored wrapper in mvdraw/xmastree, this mounts ONLY this project
+# at /work rather than all of /Users. Everything the build touches -- sources,
+# assets, disks/, mvkit/, the cmoc_os9 checkout -- lives inside the project, so
+# the wider mount buys nothing and hands the container the whole home directory.
+#
+# `docker run -t` fails in a non-TTY (agent / CI) shell, so the TTY flag is
+# added only when stdin and stdout really are terminals.
+set -euo pipefail
+
+IMAGE="${COCO_DEV_IMAGE:-jamieleecho/coco-dev:0.85}"
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+docker_flags=(--rm -i)
+if [ -t 0 ] && [ -t 1 ]; then
+  docker_flags+=(-t)
+fi
+
+if [ "$#" -eq 0 ]; then
+  set -- bash
+fi
+
+exec docker run "${docker_flags[@]}" \
+  -v "${PROJECT_DIR}:/work" \
+  -w /work \
+  "${IMAGE}" "$@"
