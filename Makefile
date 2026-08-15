@@ -1,8 +1,8 @@
-# flipper -- Reversi for Multi-Vue (CoCo 3 / NitrOS-9), built with MVKit.
+# reversi -- Reversi for Multi-Vue (CoCo 3 / NitrOS-9), built with MVKit.
 #
 # Everything is driven from this Makefile on the host:
 #
-#     make            # build build/flipper.os9
+#     make            # build build/reversi.os9
 #     make run        # boot the disk image in MAME (needs a display)
 #     make test       # screenshot regression tests in headless MAME
 #     make shell      # interactive shell in the toolchain container
@@ -14,14 +14,14 @@
 # inside the container with INSIDE_COCO_DEV=1. MAME runs on the host, which is
 # where the display and the CoCo 3 ROM set live.
 
-APP   := flipper
-SHORT := flp
+APP   := reversi
+SHORT := rev
 
 ifdef INSIDE_COCO_DEV
 # ============================== container side ===============================
 # Runs inside coco-dev, where cmoc and friends are on PATH.
 
-SRCS         := flipper.c
+SRCS         := reversi.c
 
 # cgfx screen type 8 = 4 bpp (320x192, 16 colours) -- a colour board. app.mk
 # derives the image bit depth from this, so assets must match.
@@ -131,7 +131,7 @@ run: build
 test: $(addprefix test-,$(SCENARIOS))
 
 # One explicit rule per scenario, generated. Deliberately NOT a `test-%:` pattern
-# rule: GNU make does not apply pattern rules to phony targets, so `test-flipper`
+# rule: GNU make does not apply pattern rules to phony targets, so `test-reversi`
 # would silently resolve to "Nothing to be done".
 #
 # The runner invokes `mame` and `os9` by name; MAME lives outside PATH here.

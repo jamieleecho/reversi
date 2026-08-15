@@ -108,6 +108,6 @@ CLAUDE.md                 platform notes: cmoc limits, cgfx/Multi-Vue gotchas
 
 ## Status
 
-Stage 1 of three: the development environment builds, boots and tests a
-placeholder app. Stage 2 converts `Flipper09.b09` to C with identical behaviour;
-stage 3 turns it into a full Multi-Vue application.
+Stage 2 of three. `reversi.c` is a literal C port of `Flipper09.b09` — same
+control flow, same screen output, same quirks — running as a text-mode program
+under NitrOS-9. Stage 3 turns it into a full Multi-Vue application.
