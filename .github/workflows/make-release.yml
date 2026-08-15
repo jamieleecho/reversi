@@ -1,0 +1,32 @@
+name: Make a New Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    container: jamieleecho/coco-dev:latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@master
+
+      - name: Build
+        run: |
+          make && make
+
+      - name: Get the tag
+        run: |
+          echo "RELEASE_TAG=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+          echo "REPO_NAME=${GITHUB_REPOSITORY#*/}" >> $GITHUB_ENV
+
+      - uses: ncipollo/release-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          artifacts: "./build/*.os9"
+          allowUpdates: true
+          draft: true
+          name: "${{ format('{0} {1}', env.REPO_NAME, env.RELEASE_TAG) }}"

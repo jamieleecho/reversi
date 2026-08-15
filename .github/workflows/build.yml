@@ -1,0 +1,63 @@
+name: Continuous Integration
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+# The image tag is pinned rather than :latest so a run is reproducible, and it
+# must match the tag ./coco-dev uses locally -- keep the two in step. It cannot
+# be hoisted into a workflow-level env var: the env context is not available in
+# jobs.<id>.container.image.
+jobs:
+  check-build:
+    runs-on: ubuntu-latest
+    container:
+      image: jamieleecho/coco-dev:0.85
+    steps:
+      - uses: actions/checkout@v4
+
+      # Twice on purpose: the second pass catches anything that is not
+      # idempotent, which is how the launcher copies were caught re-adding
+      # themselves to an already-built disk image.
+      - name: Check compile
+        run: |
+          make && make
+
+  graphics-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    container:
+      image: jamieleecho/coco-dev:0.85
+    steps:
+      - uses: actions/checkout@v4
+
+      # CoCo 3 ROMs are copyrighted and are not shipped in the image, so they
+      # are fetched at run time -- the same source cmoc_os9's CI uses.
+      - name: Fetch CoCo 3 ROMs
+        run: |
+          mkdir -p roms
+          curl -fL --retry 3 -o roms/coco3.zip \
+            https://archive.org/download/batov39/coco3.zip
+
+      # Each scenario boots NitrOS-9 in headless MAME, drives the Multi-Vue
+      # desktop with the mouse to launch one of the four screen-type variants,
+      # and compares screenshots against graphictest/scenarios/<name>/goldens/.
+      # Goldens are pinned to the MAME build that blessed them, so a MAME change
+      # in the image will show up here as pixel diffs rather than as a code bug.
+      - name: Run graphics tests (headless MAME)
+        env:
+          MAME_ROMPATH: ${{ github.workspace }}/roms
+        run: make test
+
+      # On failure, upload the per-scenario actual/golden/diff PNGs, the MAME
+      # log and the failure tarball so the regression is inspectable from the PR
+      # without reproducing it locally.
+      - name: Upload graphics-test artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: graphics-test-results
+          path: build/graphictest
+          if-no-files-found: ignore
