@@ -26,7 +26,11 @@ set -u
 : "${DELAY:=8}"
 : "${BOOT_WAIT:=30}"
 SCENARIO_NAME=${SCENARIO_NAME:-$(basename "$SCENARIO_DIR")}
-PROGRAM=${PROGRAM:-$SCENARIO_NAME}
+# PROGRAM is the command to type at an OS-9 shell after boot. A Multi-Vue app
+# has no shell to type at -- the scenario drives the desktop with the mouse
+# instead -- so an empty PROGRAM (the default) skips the typing entirely and
+# lets the scenario own all of its own timing.
+PROGRAM=${PROGRAM-}
 RESULTS_DIR=${RESULTS_DIR:-$(mktemp -d)}
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 COMPARE=${COMPARE:-$HERE/compare.py}
@@ -73,6 +77,15 @@ fi
 export GXTEST_RESULTS="$RESULTS_DIR" GXTEST_SCENARIO="$SCENARIO_NAME"
 # Write a small shim that boots NitrOS-9 from BASIC (since -autoboot_script
 # precludes -autoboot_command), then sets up the Lua path and runs the scenario.
+# Either type a command at the OS-9 shell, or leave the desktop alone.
+if [ -n "$PROGRAM" ]; then
+	LAUNCH_LUA="emu.wait($BOOT_WAIT)
+nk:post(\"$PROGRAM\r\")
+emu.wait(5)"
+else
+	LAUNCH_LUA="-- no PROGRAM: the scenario drives the Multi-Vue desktop itself"
+fi
+
 shim="$RESULTS_DIR/_shim.lua"
 abs_scenario=$(cd "$SCENARIO_DIR" && pwd)/scenario.lua
 abs_shared=$(cd "$HERE" && pwd)
@@ -104,17 +117,11 @@ local nk = manager.machine.natkeyboard
 nk.in_use = true
 emu.wait(2)
 nk:post("DOS\r")
--- BOOT_WAIT covers NitrOS-9 boot plus whatever the disk's startup does -- for
--- our base image, linking shell and merging SYS/std{fonts,ptrs,pats_*} into
--- grfdrv (5 file opens, ~4.6KB for grfdrv to chew through). Typing too early
--- drops the first char of $PROGRAM. It must also leave room inside BUDGET for
--- the scenario's own waits, or MAME hits -seconds_to_run mid-scenario and the
--- suspended Lua coroutine dies with it.
-emu.wait($BOOT_WAIT)
--- After the recipe startup runs, we are at the interactive OS-9 shell
--- prompt -- type the program name directly (no "shell" prefix needed).
-nk:post("$PROGRAM\r")
-emu.wait(5)
+-- BOOT_WAIT, when a PROGRAM is typed, covers NitrOS-9 boot plus whatever the
+-- disk's startup does. Typing too early drops the first character. Either way
+-- BUDGET must exceed the whole scripted timeline, or MAME hits -seconds_to_run
+-- mid-scenario and the suspended Lua coroutine dies with it.
+$LAUNCH_LUA
 -- Wrap the scenario in pcall so an error there still exits MAME -- otherwise
 -- the emulator runs out the rest of -seconds_to_run for nothing.
 local ok, err = pcall(dofile, "$abs_scenario")
@@ -193,7 +200,7 @@ while IFS=$'\t' read -r idx name compare max_delta max_pct min_ssim mask; do
 	# self-contained -- the maintainer gets actual + golden + diff together.
 	[ -f "$golden" ] && cp "$golden" "$RESULTS_DIR/golden/$name.png"
 	if [ ! -f "$golden" ]; then
-		echo "  [$SCENARIO_NAME] $name: NEW (no golden -- bless with 'make graphics-update')"
+		echo "  [$SCENARIO_NAME] $name: NEW (no golden -- bless with 'make bless SCENARIO=$SCENARIO_NAME CONFIRM=1')"
 		summary+="$name: NEW (no golden yet)"$'\n'
 		fail=1; continue
 	fi

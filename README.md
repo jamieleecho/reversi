@@ -1,10 +1,11 @@
-# flipper — Reversi for Multi-Vue
+# reversi — Reversi for Multi-Vue
 
 A Reversi (Othello) game for the Tandy Color Computer 3, running under NitrOS-9
 Level 2 as a [Multi-Vue](https://en.wikipedia.org/wiki/OS-9) application built
 with MVKit — styled after the Reversi that shipped with early Windows.
 
-It is a port of `Flipper09.b09`, a Basic09 program, to C.
+You play blue (or white); the computer plays red (or black), using the search
+from the original Basic09 program.
 
 ## Origin and credits
 
@@ -20,8 +21,10 @@ The program was written by **Stephen J. Page**. Its own title screen reads:
      OTTAWA, CANADA
 ```
 
-The original Basic09 source is kept in this repo unmodified as `Flipper09.b09`,
-both as the reference for the conversion and as a credit to its author.
+The original Basic09 source is kept in this repo unmodified as
+`assets/Flipper09.b09`, both as the reference for the conversion and as a credit
+to its author. The rules and the computer player in `game.c` are a literal port
+of it, down to the positional weight table and its mid-game rewrites.
 
 This port also builds on:
 
@@ -36,21 +39,21 @@ This port also builds on:
 ## Prerequisites
 
 - **Docker**, running. The C toolchain (`cmoc`, ToolShed, the PNG converters)
-  lives only in the `jamieleecho/coco-dev` image — nothing needs to be installed
-  on the host to build.
-- **MAME** at `~/Applications/mame`, with a CoCo 3 ROM set in
-  `~/Applications/mame/roms`. Goldens here were blessed against MAME 0.286.
-- **Python 3 with Pillow and NumPy**, for the screenshot comparator:
-  `python3 -m pip install --user Pillow numpy`
+  and MAME all live in the `jamieleecho/coco-dev` image — nothing needs to be
+  installed on the host to build or to run the tests.
+- A **CoCo 3 ROM set** (`coco3.zip`). `make test` stages it into `roms/` from
+  `$(MAME_ROMPATH)`, which defaults to `~/Applications/mame/roms`.
+- **MAME on the host**, only for `make run` — the interactive launch needs a
+  display. Defaults to `~/Applications/mame`.
 
-Override the image tag with `COCO_DEV_IMAGE`, and MAME's location with
-`MAME_DIR=...`.
+Override the image tag with `COCO_DEV_IMAGE`, MAME's location with `MAME_DIR`,
+and the ROM path with `MAME_ROMPATH`.
 
 ## Build
 
 ```sh
-make            # build build/flipper.os9
-make run        # boot it in MAME (needs a display)
+make            # build build/reversi.os9
+make run        # boot it in MAME on the host (needs a display)
 make test       # screenshot regression tests, headless
 make help       # list every target
 ```
@@ -58,56 +61,87 @@ make help       # list every target
 The first build clones both dependencies — `cmoc_os9` at a pinned commit, and
 MVKit (lifted out of a clone of `xmastree`) — then builds libc, libcgfx and
 MVKit. Neither is checked in, so this happens automatically on a clean checkout;
-later builds are incremental. Everything host-side is driven from the
-`Makefile` — build targets re-enter it inside the container, while MAME runs on
-the host, where the display and ROMs are.
+later builds are incremental.
+
+The Makefile works both on the host and inside the toolchain image: it detects
+whether `cmoc` is on `PATH` and only re-enters the container when it isn't.
 
 | Target | What it does |
 | --- | --- |
 | `make` / `make build` | Compile and produce the bootable disk image |
-| `make run` | Boot `build/flipper.os9` in MAME |
+| `make run` | Boot `build/reversi.os9` in MAME on the host |
 | `make test` | Run every scenario under `graphictest/scenarios/` |
 | `make test-<scenario>` | Run one scenario |
 | `make bless SCENARIO=<name> CONFIRM=1` | Promote captures to goldens |
 | `make shell` | Interactive shell in the toolchain container |
-| `make clean` / `make real-clean` | Remove build output / also the `cmoc_os9` checkout |
+| `make clean` / `make real-clean` | Remove build output / also the clones |
 
-### Running it
+## Running it
 
 `make run` boots to the Multi-Vue desktop. **Launch the app by double-clicking
-its icon** — this disk has no interactive text shell, so there is nothing to type
-a command at. The launcher metadata (`aif.flp`) and icon are built onto the disk
-for exactly this purpose.
+one of its icons** — this disk has no interactive text shell, so there is nothing
+to type a command at.
 
-### Testing
+There are four launchers, one per screen type. Multi-Vue fixes the screen type at
+launch, so this is how each mode is offered; the program itself adapts at run
+time. They all run the same `CMDS/reversi` binary, so Multi-Vue labels them all
+`reversi` — the icons are what tell them apart.
 
-`make test` boots the disk in headless MAME, captures screenshots at points a
-scenario chooses, and compares them against goldens checked into
-`graphictest/scenarios/<name>/goldens/`. Failures drop `actual`/`golden`/`diff`
-PNGs plus a single `<scenario>-failure.tar.gz` into `build/graphictest/<name>/`.
+| AIF | Screen type | Board | Player 1 | Player 2 |
+| --- | --- | --- | --- | --- |
+| `aif.r05` | 5 — 640×200, 2 colour | black/white dither | white | black |
+| `aif.r06` | 6 — 320×200, 4 colour | solid light grey | white | black |
+| `aif.r07` | 7 — 640×200, 4 colour | solid light grey | white | black |
+| `aif.r08` | 8 — 320×200, 16 colour | dark grey on green | blue | red |
 
-Note this is currently a **smoke test**: it launches the program from a
-test-only `startup`, which runs it on `/term` rather than in a Multi-Vue window,
-so it proves the module loads and runs but does not capture window chrome. See
-`CLAUDE.md` for the details and why.
+The 4-colour modes keep the standard Multi-Vue chrome ramp, so the menu bar and
+window furniture look native; there is no room in a 4-entry palette for the app's
+own hues as well. 16-colour mode has registers to spare and gets the colour
+board.
+
+The icons are generated by `tools/gen_icons.py` and checked in under `assets/`.
+
+## Testing
+
+`make test` boots the disk in headless MAME, drives the Multi-Vue desktop with
+the mouse to launch each of the four variants, opens Help ▸ About, and compares
+screenshots against goldens in `graphictest/scenarios/<name>/goldens/`. Failures
+drop `actual`/`golden`/`diff` PNGs plus a single `<scenario>-failure.tar.gz` into
+`build/graphictest/<name>/`.
+
+The tests run **inside the container even when invoked from the host**, because
+goldens are pinned to the MAME build that blessed them and the host's MAME is
+usually a different version. Bless from a container run, or CI will disagree.
+
+CI (`.github/workflows/build.yml`) compiles and runs the same suite, fetching the
+ROM set at run time since the image doesn't ship one.
 
 ## Layout
 
 ```
-flipper.c                 the application
-Flipper09.b09             the original Basic09 program (unmodified)
+reversi.c                 application: menus, dispatch, whose turn it is
+game.c / game.h           the rules and computer player, ported from Basic09
+board_view.c / .h         palette, layout, drawing, hit-testing
 Makefile                  host + container build
 coco-dev                  toolchain container wrapper (mounts only this project)
-assets/                   icon and palettes
+assets/                   launcher icons, palettes, and the original Basic09
+                          source (Flipper09.b09)
+tools/gen_icons.py        regenerates the four icons
 disks/                    NitrOS-9 base disk image
-mvkit/                    MVKit framework (cloned, not checked in)
-cmoc_os9/                 libc + cgfx (cloned, not checked in)
 graphictest/              screenshot test harness, scenarios and goldens
+mvkit/ cmoc_os9/          dependencies (cloned, not checked in)
 CLAUDE.md                 platform notes: cmoc limits, cgfx/Multi-Vue gotchas
 ```
 
 ## Status
 
-Stage 2 of three. `reversi.c` is a literal C port of `Flipper09.b09` — same
-control flow, same screen output, same quirks — running as a text-mode program
-under NitrOS-9. Stage 3 turns it into a full Multi-Vue application.
+All three stages are done: the toolchain builds and tests, `game.c` is a literal
+port of `Flipper09.b09`, and `reversi.c` is a point-and-click Multi-Vue app.
+
+Known rough edges:
+
+- The three lines of the About box overlap vertically. MVKit's message box
+  spaces rows about 4 px apart against an 8 px font; it needs fixing upstream in
+  xmastree.
+- The end-of-game result blink and window resizing are implemented but have not
+  been exercised in a scenario.

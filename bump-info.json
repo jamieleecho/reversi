@@ -1,0 +1,15 @@
+{
+  "scheme": "custom",
+  "schemeDefinition": "major.minor",
+  "versionFile": "./package.json",
+  "files": [{
+    "path": "version.h",
+    "line": 4
+  }],
+  "rules": [{
+      "trigger": "manual",
+      "bump": "minor",
+      "branch": "main",
+      "tag": true
+  }]
+}

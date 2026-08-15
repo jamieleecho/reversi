@@ -1,5 +1,0 @@
-* Graphics-test startup: run the app directly instead of handing off to
-* Multi-Vue's gshell. startup never returns, so sysgo never starts the desktop.
-link shell
-merge sys/stdfonts sys/stdptrs sys/stdpats_2 sys/stdpats_4 sys/stdpats_16
-reversi
